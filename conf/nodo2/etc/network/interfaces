@@ -1,0 +1,18 @@
+# /etc/network/interfaces  —  NODO 2
+# Sostituire i placeholder con gli IP reali del proprio ambiente.
+
+source /etc/network/interfaces.d/*
+
+auto lo
+iface lo inet loopback
+
+# ens192 — rete frontend/gestione (ospita il VIP via keepalived)
+auto ens192
+iface ens192 inet static
+        address <NODE2_MGMT_IP>/24
+        gateway <GATEWAY_IP>
+
+# ens224 — rete backend (verso i server StoreFront) — nessun gateway
+auto ens224
+iface ens224 inet static
+        address <NODE2_BACKEND_IP>/24

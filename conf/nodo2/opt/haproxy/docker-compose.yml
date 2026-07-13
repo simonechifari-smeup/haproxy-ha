@@ -1,0 +1,30 @@
+# /opt/haproxy/docker-compose.yml
+# Config IDENTICA sui due nodi.
+services:
+  haproxy:
+    image: haproxy:3.0
+    container_name: haproxy
+    restart: unless-stopped
+    # user: root necessario per il bind su porta privilegiata con network_mode: host
+    # I worker degradano a utente non-root tramite user/group in haproxy.cfg
+    user: root
+    # HAProxy deve vedere il VIP montato da keepalived sull'host
+    network_mode: host
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - haproxy_run:/var/run/haproxy
+    healthcheck:
+      # /dev/tcp è una feature di bash: usare bash -c esplicitamente
+      test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg && bash -c 'exec 3<>/dev/tcp/127.0.0.1/80'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  haproxy_run:
