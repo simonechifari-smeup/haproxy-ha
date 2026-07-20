@@ -5,29 +5,39 @@ Coppia di load balancer HAProxy in HA (keepalived/VRRP) posizionata tra un **Cit
 ## Architettura
 
 ```
-Client (HTTPS)
-      │
-      ▼
- Citrix NetScaler  ── termina TLS ──►  HTTP
-      │
-      ▼  http://<VIP_IP>:80
- ┌─────────────────────────────────────────┐
- │   IP Virtuale (VIP) — keepalived VRRP   │
- │   montato sul nodo MASTER corrente      │
- └──────┬──────────────────────┬───────────┘
- normale│                      │failover
-        ▼                      ▼
-┌────────────────┐   ┌─────────────────┐
-│  nodo1 MASTER  │   │  nodo2 BACKUP   │
-│  prio 110      │   │  prio 100       │
-└────────┬───────┘   └────────┬────────┘
-         └──────────┬──────────┘
-                    │  mode http · roundrobin · cookie SF_STICK
-                    ▼
-         ┌──────────────────────────────┐
-         │  StoreFront-1  :80           │
-         │  StoreFront-2  :80           │
-         └──────────────────────────────┘
+ ┌─────────────────────┐           ┌───────────────────────────┐
+ │  Client interno     │           │     Client esterno        │
+ │  (HTTP diretto)     │           │     (HTTPS)               │
+ └──────────┬──────────┘           └─────────────┬─────────────┘
+            │ HTTP                               │ HTTPS
+            │ <VIP_IP>:80                        ▼
+            │               ┌──────────────────────────────────────────┐
+            │               │              Citrix NetScaler            │
+            │               │       termina TLS  →  inoltra HTTP       │
+            │               └────────────────────┬─────────────────────┘
+            │                                    │ HTTP  →  <VIP_IP>:80
+            └───────────────────┬────────────────┘
+                                ▼
+          ┌─────────────────────────────────────────┐
+          │           IP Virtuale (VIP)             │
+          │      <VIP_IP>  —  keepalived VRRP       │
+          │    montato sul nodo MASTER corrente     │
+          └───────┬────────────────────────┬────────┘
+        normale   │                        │  failover
+                  ▼                        ▼
+     ┌───────────────────────┐   ┌───────────────────────┐
+     │    nodo1 (MASTER)     │   │    nodo2 (BACKUP)     │
+     │  <NODE1_MGMT_IP>      │   │  <NODE2_MGMT_IP>      │
+     │    prio 110           │   │    prio 100           │
+     └──────────┬────────────┘   └──────────┬────────────┘
+                │                           │
+                └─────────────┬─────────────┘
+                              │  mode http · roundrobin · cookie SF_STICK
+                              ▼
+           ┌──────────────────────────────────────┐
+           │  StoreFront-1  <STOREFRONT1_IP>:80   │
+           │  StoreFront-2  <STOREFRONT2_IP>:80   │
+           └──────────────────────────────────────┘
 ```
 
 **Il TLS è terminato sul NetScaler.** Il traffico interno viaggia in HTTP.
